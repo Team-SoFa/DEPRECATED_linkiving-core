@@ -1,17 +1,17 @@
 package com.sw19.sofa.domain.linkcard.dto.response;
 
-import com.sw19.sofa.domain.linkcard.dto.LinkCardArticleDto;
-import com.sw19.sofa.domain.linkcard.dto.LinkCardFolderDto;
-import com.sw19.sofa.domain.linkcard.dto.LinkCardTagDto;
-import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.util.List;
 
+import com.sw19.sofa.domain.linkcard.dto.LinkCardFolderDto;
+import com.sw19.sofa.domain.linkcard.dto.LinkCardTagDto;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+
 public record CreateLinkCardBasicInfoRes(
-        @Schema(description = "제목") String title,
-        @Schema(description = "AI 요약") String summary,
-        @Schema(description = "태그 리스트") List<LinkCardTagDto> tags,
-        @Schema(description = "폴더") LinkCardFolderDto folder,
-        @Schema(description = "이미지 URL") String imageUrl
+	@Schema(description = "제목") String title,
+	@Schema(description = "AI 요약") String summary,
+	@Schema(description = "태그 리스트") List<LinkCardTagDto> tags,
+	@Schema(description = "폴더") LinkCardFolderDto folder,
+	@Schema(description = "이미지 URL") String imageUrl
 ) {
 }

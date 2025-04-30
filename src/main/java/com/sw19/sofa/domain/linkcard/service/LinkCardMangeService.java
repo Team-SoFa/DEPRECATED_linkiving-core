@@ -1,5 +1,13 @@
 package com.sw19.sofa.domain.linkcard.service;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.hibernate.exception.DataException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.sw19.sofa.domain.ai.service.AiManageService;
 import com.sw19.sofa.domain.article.entity.Article;
 import com.sw19.sofa.domain.article.service.ArticleService;
@@ -15,7 +23,13 @@ import com.sw19.sofa.domain.linkcard.dto.enums.LinkCardSortBy;
 import com.sw19.sofa.domain.linkcard.dto.request.CreateLinkCardBasicInfoReq;
 import com.sw19.sofa.domain.linkcard.dto.request.LinkCardInfoEditReq;
 import com.sw19.sofa.domain.linkcard.dto.request.LinkCardReq;
-import com.sw19.sofa.domain.linkcard.dto.response.*;
+import com.sw19.sofa.domain.linkcard.dto.response.CreateLinkCardBasicInfoRes;
+import com.sw19.sofa.domain.linkcard.dto.response.LinkCardFolderRes;
+import com.sw19.sofa.domain.linkcard.dto.response.LinkCardInfoRes;
+import com.sw19.sofa.domain.linkcard.dto.response.LinkCardRes;
+import com.sw19.sofa.domain.linkcard.dto.response.LinkCardSimpleRes;
+import com.sw19.sofa.domain.linkcard.dto.response.LinkCardTagListRes;
+import com.sw19.sofa.domain.linkcard.dto.response.MostTagLinkCardListRes;
 import com.sw19.sofa.domain.linkcard.entity.LinkCard;
 import com.sw19.sofa.domain.linkcard.entity.LinkCardTag;
 import com.sw19.sofa.domain.linkcard.enums.TagType;
@@ -25,268 +39,287 @@ import com.sw19.sofa.domain.tag.entity.Tag;
 import com.sw19.sofa.domain.tag.service.CustomTagService;
 import com.sw19.sofa.domain.tag.service.TagService;
 import com.sw19.sofa.global.common.constants.Constants;
-import com.sw19.sofa.global.common.dto.*;
+import com.sw19.sofa.global.common.dto.ArticleDto;
+import com.sw19.sofa.global.common.dto.ArticleTagDto;
+import com.sw19.sofa.global.common.dto.ListRes;
+import com.sw19.sofa.global.common.dto.TagDto;
+import com.sw19.sofa.global.common.dto.TitleAndSummaryDto;
 import com.sw19.sofa.global.common.dto.enums.SortOrder;
 import com.sw19.sofa.global.error.code.CommonErrorCode;
 import com.sw19.sofa.global.error.exception.BusinessException;
 import com.sw19.sofa.global.util.EncryptionUtil;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.exception.DataException;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 @Transactional(readOnly = true)
 public class LinkCardMangeService {
-    private final TagService tagService;
-    private final CustomTagService customTagService;
-    private final LinkCardService linkCardService;
-    private final FolderService folderService;
-    private final ArticleService articleService;
-    private final LinkCardTagService linkCardTagService;
-    private final ArticleTagService articleTagService;
-    private final AiManageService aiManageService;
-    private final RemindService remindService;
+	private static final int MAX_RETRIES = 3;
+	private static final long RETRY_DELAY = 1000;
+	private final TagService tagService;
+	private final CustomTagService customTagService;
+	private final LinkCardService linkCardService;
+	private final FolderService folderService;
+	private final ArticleService articleService;
+	private final LinkCardTagService linkCardTagService;
+	private final ArticleTagService articleTagService;
+	private final AiManageService aiManageService;
+	private final RemindService remindService;
 
-    private static final int MAX_RETRIES = 3;
-    private static final long RETRY_DELAY = 1000;
+	@Transactional
+	public CreateLinkCardBasicInfoRes createLinkCardBasicInfo(Member member, CreateLinkCardBasicInfoReq req) {
+		int attempts = 0;
+		while (attempts < MAX_RETRIES) {
+			try {
+				return tryCreateLinkCardBasicInfo(member, req);
+			} catch (DataIntegrityViolationException | DataException e) {
+				attempts++;
+				if (attempts == MAX_RETRIES) {
+					log.error("Failed to create LinkCard after {} attempts", MAX_RETRIES, e);
+					throw e;
+				}
+				log.warn("Attempt {} failed, retrying after delay...", attempts);
+				try {
+					Thread.sleep(RETRY_DELAY);
+				} catch (InterruptedException ie) {
+					Thread.currentThread().interrupt();
+					throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR);
+				}
+			}
+		}
+		throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR);
+	}
 
+	private CreateLinkCardBasicInfoRes tryCreateLinkCardBasicInfo(Member member, CreateLinkCardBasicInfoReq req) {
+		ArticleDto articleDto = articleService.getArticleDtoByUrlOrElseNull(req.url());
+		List<TagDto> tagDtoList;
+		TitleAndSummaryDto titleAndSummaryDto;
 
-    @Transactional
-    public CreateLinkCardBasicInfoRes createLinkCardBasicInfo(Member member, CreateLinkCardBasicInfoReq req) {
-        int attempts = 0;
-        while (attempts < MAX_RETRIES) {
-            try {
-                return tryCreateLinkCardBasicInfo(member, req);
-            } catch (DataIntegrityViolationException | DataException e) {
-                attempts++;
-                if (attempts == MAX_RETRIES) {
-                    log.error("Failed to create LinkCard after {} attempts", MAX_RETRIES, e);
-                    throw e;
-                }
-                log.warn("Attempt {} failed, retrying after delay...", attempts);
-                try {
-                    Thread.sleep(RETRY_DELAY);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR);
-                }
-            }
-        }
-        throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR);
-    }
+		if (articleDto != null) {
+			List<ArticleTagDto> articleTagDtoList = articleTagService.getArticleTagDtoListByArticleId(articleDto.id());
+			titleAndSummaryDto = new TitleAndSummaryDto(articleDto.title(), articleDto.summary());
 
-    private CreateLinkCardBasicInfoRes tryCreateLinkCardBasicInfo(Member member, CreateLinkCardBasicInfoReq req) {
-        ArticleDto articleDto = articleService.getArticleDtoByUrlOrElseNull(req.url());
-        List<TagDto> tagDtoList;
-        TitleAndSummaryDto titleAndSummaryDto;
+			List<Long> tagIdList = articleTagDtoList.stream().map(ArticleTagDto::tagId).toList();
+			tagDtoList = tagService.getTagDtoListByIdList(tagIdList);
+		} else {
+			titleAndSummaryDto = aiManageService.createTitleAndSummary(req.url());
+			List<String> tagNameList = aiManageService.createTagList(req.url());
+			List<Tag> tagList = tagService.createAiTags(tagNameList);
+			tagDtoList = tagList.stream().map(TagDto::new).toList();
 
-        if(articleDto != null) {
-            List<ArticleTagDto> articleTagDtoList = articleTagService.getArticleTagDtoListByArticleId(articleDto.id());
-            titleAndSummaryDto = new TitleAndSummaryDto(articleDto.title(), articleDto.summary());
+			Article article = articleService.addArticle(
+				req.url(),
+				titleAndSummaryDto.title(),
+				titleAndSummaryDto.summary()
+			);
+			articleTagService.addArticleTagListByArticleAndTagListIn(article, tagList);
 
-            List<Long> tagIdList = articleTagDtoList.stream().map(ArticleTagDto::tagId).toList();
-            tagDtoList = tagService.getTagDtoListByIdList(tagIdList);
-        } else {
-            titleAndSummaryDto = aiManageService.createTitleAndSummary(req.url());
-            List<String> tagNameList = aiManageService.createTagList(req.url());
-            List<Tag> tagList = tagService.createAiTags(tagNameList);
-            tagDtoList = tagList.stream().map(TagDto::new).toList();
+			articleDto = new ArticleDto(article);
+		}
+		List<FolderRes> userFolders = folderService.getFolderList(member).folderList().stream()
+			.filter(folder -> !folder.name().equals(Constants.recycleBinName))
+			.toList();
 
-            Article article = articleService.addArticle(
-                    req.url(),
-                    titleAndSummaryDto.title(),
-                    titleAndSummaryDto.summary()
-            );
-            articleTagService.addArticleTagListByArticleAndTagListIn(article, tagList);
+		Folder selectedFolder = null;
 
-            articleDto = new ArticleDto(article);
-        }
-        List<FolderRes> userFolders = folderService.getFolderList(member).folderList().stream()
-                .filter(folder -> !folder.name().equals(Constants.recycleBinName))
-                .toList();
+		if (!userFolders.isEmpty()) {
+			String recommendedFolderName = aiManageService.recommendFolder(
+				titleAndSummaryDto.summary(),
+				userFolders.stream().map(FolderRes::name).toList()
+			);
+			selectedFolder = folderService.getFolderByNameAndMemberOrNull(recommendedFolderName, member);
+		}
 
-        Folder selectedFolder = null;
+		if (selectedFolder == null) {
+			String defaultFolderName = aiManageService.recommendFolder(
+				titleAndSummaryDto.summary(),
+				Constants.DEFAULT_FOLDER_CATEGORIES
+			);
+			selectedFolder = folderService.getFolderByNameAndMemberOrNull(defaultFolderName, member);
 
-        if (!userFolders.isEmpty()) {
-            String recommendedFolderName = aiManageService.recommendFolder(
-                    titleAndSummaryDto.summary(),
-                    userFolders.stream().map(FolderRes::name).toList()
-            );
-            selectedFolder = folderService.getFolderByNameAndMemberOrNull(recommendedFolderName, member);
-        }
+			if (selectedFolder == null) {
+				selectedFolder = folderService.addFolder(member, defaultFolderName);
+				log.info("Created default category folder: {} for user: {}", defaultFolderName, member.getId());
+			}
+		}
 
-        if (selectedFolder == null) {
-            String defaultFolderName = aiManageService.recommendFolder(
-                    titleAndSummaryDto.summary(),
-                    Constants.DEFAULT_FOLDER_CATEGORIES
-            );
-            selectedFolder = folderService.getFolderByNameAndMemberOrNull(defaultFolderName, member);
+		List<LinkCardTagDto> linkCardTagDtoList = tagDtoList.stream().map(LinkCardTagDto::new).toList();
+		LinkCardFolderDto linkCardFolderDto = new LinkCardFolderDto(selectedFolder);
 
-            if (selectedFolder == null) {
-                selectedFolder = folderService.addFolder(member, defaultFolderName);
-                log.info("Created default category folder: {} for user: {}", defaultFolderName, member.getId());
-            }
-        }
+		return new CreateLinkCardBasicInfoRes(
+			titleAndSummaryDto.title(),
+			titleAndSummaryDto.summary(),
+			linkCardTagDtoList,
+			linkCardFolderDto,
+			articleDto.imageUrl()
+		);
+	}
 
-        List<LinkCardTagDto> linkCardTagDtoList = tagDtoList.stream().map(LinkCardTagDto::new).toList();
-        LinkCardFolderDto linkCardFolderDto = new LinkCardFolderDto(selectedFolder);
+	@Transactional
+	public LinkCardRes getLinkCard(String encryptId, Member member) {
+		Long linkCardId = EncryptionUtil.decrypt(encryptId);
 
-        return new CreateLinkCardBasicInfoRes(
-                titleAndSummaryDto.title(),
-                titleAndSummaryDto.summary(),
-                linkCardTagDtoList,
-                linkCardFolderDto,
-                articleDto.imageUrl()
-        );
-    }
+		LinkCard linkCard = linkCardService.getLinkCardDto(linkCardId);
+		remindService.removeFromRemind(linkCard, member);
 
-    @Transactional
-    public LinkCardRes getLinkCard(String encryptId, Member member){
-        Long linkCardId = EncryptionUtil.decrypt(encryptId);
+		List<LinkCardTagSimpleDto> linkCardTagSimpleDtoList =
+			linkCardTagService.getLinkCardTagSimpleDtoListByLinkCardId(
+				linkCardId);
 
-        LinkCard linkCard = linkCardService.getLinkCardDto(linkCardId);
-        remindService.removeFromRemind(linkCard, member);
+		List<LinkCardTagDto> linkCardTagDtoList = getLinkCardTagDtoList(linkCardTagSimpleDtoList);
 
-        List<LinkCardTagSimpleDto> linkCardTagSimpleDtoList = linkCardTagService.getLinkCardTagSimpleDtoListByLinkCardId(linkCardId);
+		return new LinkCardRes(linkCard, linkCardTagDtoList);
+	}
 
-        List<LinkCardTagDto> linkCardTagDtoList = getLinkCardTagDtoList(linkCardTagSimpleDtoList);
+	@Transactional
+	public void addLinkCard(LinkCardReq req) {
+		Long folderId = EncryptionUtil.decrypt(req.folderId());
 
-        return new LinkCardRes(linkCard, linkCardTagDtoList);
-    }
+		Folder folder = folderService.getFolder(folderId);
+		Article article = articleService.getArticleByUrl(req.url());
 
-    @Transactional
-    public void addLinkCard(LinkCardReq req) {
-        Long folderId = EncryptionUtil.decrypt(req.folderId());
+		LinkCard linkCard = linkCardService.addLinkCard(req, folder, article);
+		List<LinkCardTagSimpleDto> linkCardTagSimpleDtoList = req.tagList()
+			.stream()
+			.map(LinkCardTagSimpleDto::new)
+			.toList();
+		linkCardTagService.addLinkCardTagList(linkCard, linkCardTagSimpleDtoList);
 
-        Folder folder = folderService.getFolder(folderId);
-        Article article = articleService.getArticleByUrl(req.url());
+	}
 
-        LinkCard linkCard = linkCardService.addLinkCard(req, folder, article);
-        List<LinkCardTagSimpleDto> linkCardTagSimpleDtoList = req.tagList().stream().map(LinkCardTagSimpleDto::new).toList();
-        linkCardTagService.addLinkCardTagList(linkCard, linkCardTagSimpleDtoList );
+	public ListRes<LinkCardSimpleRes> getLinkCardList(Member member, LinkCardSortBy linkCardSortBy, SortOrder sortOrder,
+		String encryptLastId, int limit) {
+		Long lastId = encryptLastId.equals("0") ? 0 : EncryptionUtil.decrypt(encryptLastId);
+		List<Long> folderIdList = folderService.getFolderList(member).folderList().stream()
+			.filter(folder -> !"휴지통".equals(folder.name()))
+			.map(folderRes -> EncryptionUtil.decrypt(folderRes.id()))
+			.toList();
+		return linkCardListInfiniteScroll(folderIdList, linkCardSortBy, sortOrder, limit, lastId);
+	}
 
-    }
+	public MostTagLinkCardListRes getMostTagLinkCardList(Member member, LinkCardSortBy linkCardSortBy,
+		SortOrder sortOrder, String encryptLastId, int limit) {
+		Long lsatId = EncryptionUtil.decrypt(encryptLastId);
 
-    public ListRes<LinkCardSimpleRes> getLinkCardList(Member member, LinkCardSortBy linkCardSortBy, SortOrder sortOrder, String encryptLastId, int limit) {
-        Long lastId = encryptLastId.equals("0") ? 0 : EncryptionUtil.decrypt(encryptLastId);
-        List<Long> folderIdList = folderService.getFolderList(member).folderList().stream()
-                .filter(folder -> !"휴지통".equals(folder.name()))
-                .map(folderRes -> EncryptionUtil.decrypt(folderRes.id()))
-                .toList();
-        return linkCardListInfiniteScroll(folderIdList, linkCardSortBy, sortOrder, limit, lastId);
-    }
+		LinkCardTag linkCardTag = linkCardTagService.getMostTagIdByMember(member);
+		Long tagId = linkCardTag.getTagId();
 
-    public MostTagLinkCardListRes getMostTagLinkCardList(Member member, LinkCardSortBy linkCardSortBy, SortOrder sortOrder, String encryptLastId, int limit) {
-        Long lsatId = EncryptionUtil.decrypt(encryptLastId);
+		LinkCardTagDto tagDto;
+		if (linkCardTag.getTagType().equals(TagType.AI)) {
+			tagDto = new LinkCardTagDto(tagService.getTagDto(tagId));
+		} else {
+			tagDto = new LinkCardTagDto(customTagService.getCustomTagDto(tagId));
+		}
 
-        LinkCardTag linkCardTag = linkCardTagService.getMostTagIdByMember(member);
-        Long tagId = linkCardTag.getTagId();
+		ListRes<LinkCard> linkCardListRes = linkCardService.getLinkCardSimpleResListByLinkCardTagAndSortCondition(
+			linkCardTag, linkCardSortBy, sortOrder, limit, lsatId);
+		List<LinkCardSimpleRes> data = linkCardListRes.data().stream().map(LinkCardSimpleRes::new).toList();
 
-        LinkCardTagDto tagDto;
-        if(linkCardTag.getTagType().equals(TagType.AI)){
-            tagDto = new LinkCardTagDto(tagService.getTagDto(tagId));
-        }else{
-            tagDto = new LinkCardTagDto(customTagService.getCustomTagDto(tagId));
-        }
+		return new MostTagLinkCardListRes(tagDto, data, limit, linkCardListRes.size(), linkCardListRes.hasNext());
+	}
 
-        ListRes<LinkCard> linkCardListRes = linkCardService.getLinkCardSimpleResListByLinkCardTagAndSortCondition(linkCardTag, linkCardSortBy, sortOrder, limit, lsatId);
-        List<LinkCardSimpleRes> data = linkCardListRes.data().stream().map(LinkCardSimpleRes::new).toList();
+	public ListRes<LinkCardSimpleRes> getLinkCardListByFolder(String encryptFolderId, LinkCardSortBy linkCardSortBy,
+		SortOrder sortOrder, String encryptLastId, int limit) {
+		Long folderId = EncryptionUtil.decrypt(encryptFolderId);
+		Long lastId = encryptLastId.equals("0") ? 0 : EncryptionUtil.decrypt(encryptLastId);
 
-        return new MostTagLinkCardListRes(tagDto, data, limit, linkCardListRes.size(), linkCardListRes.hasNext());
-    }
+		return linkCardListInfiniteScroll(List.of(folderId), linkCardSortBy, sortOrder, limit, lastId);
+	}
 
-    public ListRes<LinkCardSimpleRes> getLinkCardListByFolder(String encryptFolderId, LinkCardSortBy linkCardSortBy, SortOrder sortOrder, String encryptLastId, int limit) {
-        Long folderId = EncryptionUtil.decrypt(encryptFolderId);
-        Long lastId = encryptLastId.equals("0") ? 0 : EncryptionUtil.decrypt(encryptLastId);
+	@Transactional
+	public LinkCardInfoRes editLinkCardInfo(String encryptId, LinkCardInfoEditReq req) {
+		Long linkCardId = EncryptionUtil.decrypt(encryptId);
 
-        return linkCardListInfiniteScroll(List.of(folderId), linkCardSortBy, sortOrder, limit, lastId);
-    }
+		return linkCardService.editLinkCardInfo(linkCardId, req.title(), req.memo(), req.summary());
+	}
 
-    @Transactional
-    public LinkCardInfoRes editLinkCardInfo(String encryptId, LinkCardInfoEditReq req) {
-        Long linkCardId = EncryptionUtil.decrypt(encryptId);
+	@Transactional
+	public LinkCardTagListRes addLinkCardTag(String encryptId, List<LinkCardTagSimpleEncryptDto> tagList) {
+		Long linkCardId = EncryptionUtil.decrypt(encryptId);
+		LinkCard linkCard = linkCardService.getLinkCard(linkCardId);
 
-        return linkCardService.editLinkCardInfo(linkCardId, req.title(),req.memo(),req.summary());
-    }
+		List<LinkCardTagSimpleDto> req = tagList.stream().map(LinkCardTagSimpleDto::new).toList();
+		List<LinkCardTagSimpleDto> linkCardTagSimpleDtoList = linkCardTagService.addLinkCardTagList(linkCard, req)
+			.stream()
+			.map(LinkCardTagSimpleDto::new)
+			.toList();
 
-    @Transactional
-    public LinkCardTagListRes addLinkCardTag(String encryptId, List<LinkCardTagSimpleEncryptDto> tagList) {
-        Long linkCardId = EncryptionUtil.decrypt(encryptId);
-        LinkCard linkCard = linkCardService.getLinkCard(linkCardId);
+		List<LinkCardTagDto> linkCardTagDtoList = getLinkCardTagDtoList(linkCardTagSimpleDtoList);
 
-        List<LinkCardTagSimpleDto> req = tagList.stream().map(LinkCardTagSimpleDto::new).toList();
-        List<LinkCardTagSimpleDto> linkCardTagSimpleDtoList = linkCardTagService.addLinkCardTagList(linkCard, req).stream().map(LinkCardTagSimpleDto::new).toList();
+		return new LinkCardTagListRes(linkCardTagDtoList);
+	}
 
-        List<LinkCardTagDto> linkCardTagDtoList = getLinkCardTagDtoList(linkCardTagSimpleDtoList);
+	@Transactional
+	public void deleteLinkCardTag(String encryptLinkCardId, String encryptTagId, TagType tagType) {
+		Long linkCardId = EncryptionUtil.decrypt(encryptLinkCardId);
+		Long tagId = EncryptionUtil.decrypt(encryptTagId);
 
-        return new LinkCardTagListRes(linkCardTagDtoList);
-    }
+		linkCardTagService.deleteLinkCardTag(linkCardId, tagId, tagType);
+	}
 
-    @Transactional
-    public void deleteLinkCardTag(String encryptLinkCardId, String encryptTagId, TagType tagType) {
-        Long linkCardId = EncryptionUtil.decrypt(encryptLinkCardId);
-        Long tagId = EncryptionUtil.decrypt(encryptTagId);
+	@Transactional
+	public LinkCardFolderRes editLinkCardFolder(String encryptLinkCardId, String encryptFolderId) {
+		Long linkCardId = EncryptionUtil.decrypt(encryptLinkCardId);
+		Long folderId = EncryptionUtil.decrypt(encryptFolderId);
 
-        linkCardTagService.deleteLinkCardTag(linkCardId, tagId, tagType);
-    }
+		Folder folder = folderService.getFolder(folderId);
+		linkCardService.editLinkCardFolder(linkCardId, folder);
+		return new LinkCardFolderRes(folder);
+	}
 
-    @Transactional
-    public LinkCardFolderRes editLinkCardFolder(String encryptLinkCardId, String encryptFolderId) {
-        Long linkCardId = EncryptionUtil.decrypt(encryptLinkCardId);
-        Long folderId = EncryptionUtil.decrypt(encryptFolderId);
+	@Transactional
+	public void enterLinkCard(String encryptId, Member member) {
+		Long linkCardId = EncryptionUtil.decrypt(encryptId);
+		LinkCard linkCard = linkCardService.getLinkCard(linkCardId);
+		linkCardService.enterLinkCard(linkCard);
+		remindService.removeFromRemind(linkCard, member);
+		articleService.enterArticle(linkCard.getArticle());
+	}
 
-        Folder folder = folderService.getFolder(folderId);
-        linkCardService.editLinkCardFolder(linkCardId,folder);
-        return new LinkCardFolderRes(folder);
-    }
+	@Transactional
+	public void moveLinkCardToRecycleBin(Member member, String encryptId) {
+		Long linkCardId = EncryptionUtil.decrypt(encryptId);
 
-    @Transactional
-    public void enterLinkCard(String encryptId, Member member) {
-        Long linkCardId = EncryptionUtil.decrypt(encryptId);
-        LinkCard linkCard = linkCardService.getLinkCard(linkCardId);
-        linkCardService.enterLinkCard(linkCard);
-        remindService.removeFromRemind(linkCard, member);
-        articleService.enterArticle(linkCard.getArticle());
-    }
+		LinkCard linkCard = linkCardService.getLinkCard(linkCardId);
+		Folder recycleBinFolder = folderService.getFolderByNameAndMemberOrElseThrow(Constants.recycleBinName, member);
+		linkCard.editFolder(recycleBinFolder);
+	}
 
-    @Transactional
-    public void moveLinkCardToRecycleBin(Member member, String encryptId) {
-        Long linkCardId = EncryptionUtil.decrypt(encryptId);
+	private List<LinkCardTagDto> getLinkCardTagDtoList(List<LinkCardTagSimpleDto> linkCardTagSimpleDtoList) {
+		List<Long> tagIdList = linkCardTagSimpleDtoList.stream()
+			.filter(linkCardTagInfoDto -> linkCardTagInfoDto.tagType().equals(TagType.AI))
+			.map(LinkCardTagSimpleDto::id)
+			.toList();
+		List<Long> customIdList = linkCardTagSimpleDtoList.stream()
+			.filter(linkCardTagInfoDto -> linkCardTagInfoDto.tagType().equals(TagType.CUSTOM))
+			.map(LinkCardTagSimpleDto::id)
+			.toList();
 
-        LinkCard linkCard = linkCardService.getLinkCard(linkCardId);
-        Folder recycleBinFolder = folderService.getFolderByNameAndMemberOrElseThrow(Constants.recycleBinName, member);
-        linkCard.editFolder(recycleBinFolder);
-    }
+		List<LinkCardTagDto> linkCardTagDtoList = new ArrayList<>();
+		linkCardTagDtoList.addAll(
+			tagService.getTagDtoListByIdList(tagIdList).stream().map(LinkCardTagDto::new).toList());
+		linkCardTagDtoList.addAll(
+			customTagService.getCustomTagDtoListByIdList(customIdList).stream().map(LinkCardTagDto::new).toList());
+		return linkCardTagDtoList;
+	}
 
+	private ListRes<LinkCardSimpleRes> linkCardListInfiniteScroll(List<Long> folderIdList,
+		LinkCardSortBy linkCardSortBy, SortOrder sortOrder, int limit, Long lastId) {
+		ListRes<LinkCard> linkCardListRes = linkCardService.getLinkCardSimpleResListByFolderIdAndSortCondition(
+			folderIdList, linkCardSortBy, sortOrder, limit, lastId);
+		List<LinkCardSimpleRes> linkCardSimpleResList = linkCardListRes.data()
+			.stream()
+			.map(LinkCardSimpleRes::new)
+			.toList();
 
-    private List<LinkCardTagDto> getLinkCardTagDtoList(List<LinkCardTagSimpleDto> linkCardTagSimpleDtoList) {
-        List<Long> tagIdList = linkCardTagSimpleDtoList.stream().filter(linkCardTagInfoDto -> linkCardTagInfoDto.tagType().equals(TagType.AI)).map(LinkCardTagSimpleDto::id).toList();
-        List<Long> customIdList = linkCardTagSimpleDtoList.stream().filter(linkCardTagInfoDto -> linkCardTagInfoDto.tagType().equals(TagType.CUSTOM)).map(LinkCardTagSimpleDto::id).toList();
-
-        List<LinkCardTagDto> linkCardTagDtoList = new ArrayList<>();
-        linkCardTagDtoList.addAll(tagService.getTagDtoListByIdList(tagIdList).stream().map(LinkCardTagDto::new).toList());
-        linkCardTagDtoList.addAll(customTagService.getCustomTagDtoListByIdList(customIdList).stream().map(LinkCardTagDto::new).toList());
-        return linkCardTagDtoList;
-    }
-
-
-    private ListRes<LinkCardSimpleRes> linkCardListInfiniteScroll(List<Long> folderIdList, LinkCardSortBy linkCardSortBy, SortOrder sortOrder, int limit, Long lastId) {
-        ListRes<LinkCard> linkCardListRes = linkCardService.getLinkCardSimpleResListByFolderIdAndSortCondition(folderIdList, linkCardSortBy, sortOrder, limit, lastId);
-        List<LinkCardSimpleRes> linkCardSimpleResList = linkCardListRes.data().stream().map(LinkCardSimpleRes::new).toList();
-
-        return new ListRes<>(
-                linkCardSimpleResList,
-                linkCardListRes.limit(),
-                linkCardListRes.size(),
-                linkCardListRes.hasNext()
-        );
-    }
+		return new ListRes<>(
+			linkCardSimpleResList,
+			linkCardListRes.limit(),
+			linkCardListRes.size(),
+			linkCardListRes.hasNext()
+		);
+	}
 }

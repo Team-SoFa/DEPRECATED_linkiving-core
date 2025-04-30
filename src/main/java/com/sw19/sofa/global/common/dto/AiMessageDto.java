@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AiMessageDto {
-    private String role;
-    private String content; //prompt를 뜻함
+	private String role;
+	private String content; //prompt를 뜻함
 
 }

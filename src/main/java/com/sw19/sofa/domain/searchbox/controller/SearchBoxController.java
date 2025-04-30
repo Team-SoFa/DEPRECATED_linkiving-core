@@ -1,5 +1,15 @@
 package com.sw19.sofa.domain.searchbox.controller;
 
+import java.util.List;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.sw19.sofa.domain.member.entity.Member;
 import com.sw19.sofa.domain.searchbox.api.SearchBoxApi;
 import com.sw19.sofa.domain.searchbox.dto.response.SearchBoxRes;
@@ -10,68 +20,66 @@ import com.sw19.sofa.domain.tag.dto.response.TagSearchRes;
 import com.sw19.sofa.global.common.dto.ListRes;
 import com.sw19.sofa.global.common.dto.enums.SortOrder;
 import com.sw19.sofa.security.jwt.AuthMember;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/search")
 @RequiredArgsConstructor
 public class SearchBoxController implements SearchBoxApi {
-    private final SearchBoxService searchBoxService;
-    private final SearchHistoryService searchHistoryService;
+	private final SearchBoxService searchBoxService;
+	private final SearchHistoryService searchHistoryService;
 
-    @GetMapping
-    public ResponseEntity<ListRes<SearchBoxRes>> search(
-            @RequestParam(required = false) String folderId,
-            @RequestParam(required = false) List<String> tagIds,
-            @RequestParam(required = false) String keyword,
-            @AuthMember Member member,
-            @RequestParam(defaultValue = "0") String lastId,
-            @RequestParam(defaultValue = "20") int limit,
-            @RequestParam(defaultValue = "RECENTLY_MODIFIED") SearchBoxSortBy sortBy,
-            @RequestParam(defaultValue = "DESCENDING") SortOrder sortOrder
-    ) {
-        return ResponseEntity.ok(searchBoxService.search(folderId, tagIds, keyword, member, lastId, limit, sortBy, sortOrder));
-    }
+	@GetMapping
+	public ResponseEntity<ListRes<SearchBoxRes>> search(
+		@RequestParam(required = false) String folderId,
+		@RequestParam(required = false) List<String> tagIds,
+		@RequestParam(required = false) String keyword,
+		@AuthMember Member member,
+		@RequestParam(defaultValue = "0") String lastId,
+		@RequestParam(defaultValue = "20") int limit,
+		@RequestParam(defaultValue = "RECENTLY_MODIFIED") SearchBoxSortBy sortBy,
+		@RequestParam(defaultValue = "DESCENDING") SortOrder sortOrder
+	) {
+		return ResponseEntity.ok(
+			searchBoxService.search(folderId, tagIds, keyword, member, lastId, limit, sortBy, sortOrder));
+	}
 
-    @Override
-    @GetMapping("/history/keywords")
-    public ResponseEntity<List<String>> getRecentSearchKeywords(@AuthMember Member member) {
-        return ResponseEntity.ok(searchHistoryService.getSearchKeywordHistory(member.getId()));
-    }
+	@Override
+	@GetMapping("/history/keywords")
+	public ResponseEntity<List<String>> getRecentSearchKeywords(@AuthMember Member member) {
+		return ResponseEntity.ok(searchHistoryService.getSearchKeywordHistory(member.getId()));
+	}
 
-    @Override
-    @GetMapping("/history/tags")
-    public ResponseEntity<List<String>> getRecentSearchTags(@AuthMember Member member) {
-        return ResponseEntity.ok(searchHistoryService.getSearchTagHistory(member.getId()));
-    }
+	@Override
+	@GetMapping("/history/tags")
+	public ResponseEntity<List<String>> getRecentSearchTags(@AuthMember Member member) {
+		return ResponseEntity.ok(searchHistoryService.getSearchTagHistory(member.getId()));
+	}
 
-    @Override
-    @GetMapping("/tags")
-    public ResponseEntity<List<TagSearchRes>> searchTags(@RequestParam String keyword) {
-        return ResponseEntity.ok(searchBoxService.searchTags(keyword));
-    }
+	@Override
+	@GetMapping("/tags")
+	public ResponseEntity<List<TagSearchRes>> searchTags(@RequestParam String keyword) {
+		return ResponseEntity.ok(searchBoxService.searchTags(keyword));
+	}
 
-    @Override
-    @DeleteMapping("/history/keywords/{keyword}")
-    public ResponseEntity<Void> deleteSearchKeyword(
-            @PathVariable String keyword,
-            @AuthMember Member member
-    ) {
-        searchHistoryService.deleteSearchKeywordHistory(member.getId(), keyword);
-        return ResponseEntity.ok().build();
-    }
+	@Override
+	@DeleteMapping("/history/keywords/{keyword}")
+	public ResponseEntity<Void> deleteSearchKeyword(
+		@PathVariable String keyword,
+		@AuthMember Member member
+	) {
+		searchHistoryService.deleteSearchKeywordHistory(member.getId(), keyword);
+		return ResponseEntity.ok().build();
+	}
 
-    @Override
-    @DeleteMapping("/history/tags/{tagId}")
-    public ResponseEntity<Void> deleteSearchTag(
-            @PathVariable String tagId,
-            @AuthMember Member member
-    ) {
-        searchHistoryService.deleteSearchTagHistory(member.getId(), tagId);
-        return ResponseEntity.ok().build();
-    }
+	@Override
+	@DeleteMapping("/history/tags/{tagId}")
+	public ResponseEntity<Void> deleteSearchTag(
+		@PathVariable String tagId,
+		@AuthMember Member member
+	) {
+		searchHistoryService.deleteSearchTagHistory(member.getId(), tagId);
+		return ResponseEntity.ok().build();
+	}
 }
