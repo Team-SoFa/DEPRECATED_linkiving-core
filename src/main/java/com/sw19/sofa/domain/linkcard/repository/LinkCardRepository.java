@@ -1,27 +1,30 @@
 package com.sw19.sofa.domain.linkcard.repository;
 
-import com.sw19.sofa.domain.folder.entity.Folder;
-import com.sw19.sofa.domain.linkcard.entity.LinkCard;
-import com.sw19.sofa.domain.linkcard.error.LinkCardErrorCode;
-import com.sw19.sofa.global.error.exception.BusinessException;
+import java.time.LocalDateTime;
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
-import java.util.List;
+import com.sw19.sofa.domain.folder.entity.Folder;
+import com.sw19.sofa.domain.linkcard.entity.LinkCard;
+import com.sw19.sofa.domain.linkcard.error.LinkCardErrorCode;
+import com.sw19.sofa.global.error.exception.BusinessException;
 
 @Repository
 public interface LinkCardRepository extends JpaRepository<LinkCard, Long>, LinkCardCustomRepository {
-    default LinkCard findByIdOrElseThrowException(Long id) {
-        return findById(id).orElseThrow(() -> new BusinessException(LinkCardErrorCode.NOT_FOUND_LINK_CARD));
-    }
-    List<LinkCard> findAllByFolder(Folder folder);
+	default LinkCard findByIdOrElseThrowException(Long id) {
+		return findById(id).orElseThrow(() -> new BusinessException(LinkCardErrorCode.NOT_FOUND_LINK_CARD));
+	}
 
-    @Query("SELECT lc FROM LinkCard lc WHERE lc.visitedAt < :thresholdDate")
-    List<LinkCard> findUnusedLinkCardList(@Param("thresholdDate") LocalDateTime thresholdDate);
+	List<LinkCard> findAllByFolder(Folder folder);
 
-    @Query("SELECT lc FROM LinkCard lc WHERE lc.modifiedAt < :thresholdDate and lc.folder.name = :recycleBin")
-    List<LinkCard> findExpiredLinkCardListInRecycleBin(@Param("thresholdDate") LocalDateTime thresholdDate, @Param("recycleBin") String name);
+	@Query("SELECT lc FROM LinkCard lc WHERE lc.visitedAt < :thresholdDate")
+	List<LinkCard> findUnusedLinkCardList(@Param("thresholdDate") LocalDateTime thresholdDate);
+
+	@Query("SELECT lc FROM LinkCard lc WHERE lc.modifiedAt < :thresholdDate and lc.folder.name = :recycleBin")
+	List<LinkCard> findExpiredLinkCardListInRecycleBin(@Param("thresholdDate") LocalDateTime thresholdDate,
+		@Param("recycleBin") String name);
 }

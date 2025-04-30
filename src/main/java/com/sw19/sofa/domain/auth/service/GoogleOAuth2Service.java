@@ -1,5 +1,17 @@
 package com.sw19.sofa.domain.auth.service;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
+
 import com.sw19.sofa.domain.auth.dto.AuthMemberDto;
 import com.sw19.sofa.domain.auth.dto.request.LoginAndSignUpReq;
 import com.sw19.sofa.domain.auth.dto.response.GoogleTokenRes;
@@ -10,182 +22,172 @@ import com.sw19.sofa.domain.auth.exception.OAuth2AuthenticationProcessingExcepti
 import com.sw19.sofa.domain.auth.exception.OAuth2ErrorCode;
 import com.sw19.sofa.domain.member.entity.Member;
 import com.sw19.sofa.domain.member.service.MemberService;
-import com.sw19.sofa.domain.recycleBin.service.RecycleBinManageService;
+import com.sw19.sofa.domain.recyclebin.service.RecycleBinManageService;
 import com.sw19.sofa.domain.setting.service.SettingService;
 import com.sw19.sofa.security.jwt.provider.JwtTokenProvider;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
-import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
-
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class GoogleOAuth2Service {
 
-    private final RestTemplate restTemplate;
-    private final JwtTokenProvider jwtTokenProvider;
-    private final MemberService memberService;
-    private final SettingService settingService;
-    private final RecycleBinManageService recycleBinManageService;
+	private final RestTemplate restTemplate;
+	private final JwtTokenProvider jwtTokenProvider;
+	private final MemberService memberService;
+	private final SettingService settingService;
+	private final RecycleBinManageService recycleBinManageService;
 
-    @Value("${spring.security.oauth2.client.registration.google.client-id}")
-    private String clientId;
-    @Value("${spring.security.oauth2.client.registration.google.client-secret}")
-    private String clientSecret;
-    @Value("${spring.security.oauth2.client.registration.google.redirect-uri}")
-    private String redirectUri;
-    @Value("${spring.security.oauth2.provider.google.token-uri}")
-    private String tokenUri;
-    @Value("${spring.security.oauth2.provider.google.user-info-uri}")
-    private String resourceUri;
+	@Value("${spring.security.oauth2.client.registration.google.client-id}")
+	private String clientId;
+	@Value("${spring.security.oauth2.client.registration.google.client-secret}")
+	private String clientSecret;
+	@Value("${spring.security.oauth2.client.registration.google.redirect-uri}")
+	private String redirectUri;
+	@Value("${spring.security.oauth2.provider.google.token-uri}")
+	private String tokenUri;
+	@Value("${spring.security.oauth2.provider.google.user-info-uri}")
+	private String resourceUri;
 
+	public String getGoogleLoginUrl() {
+		return "https://accounts.google.com/o/oauth2/v2/auth?"
+			+ "client_id="
+			+ clientId
+			+ "&redirect_uri="
+			+ redirectUri
+			+ "&response_type=code"
+			+ "&scope=email profile";
+	}
 
-    public String getGoogleLoginUrl() {
-        return "https://accounts.google.com/o/oauth2/v2/auth?" +
-                "client_id=" + clientId +
-                "&redirect_uri=" + redirectUri +
-                "&response_type=code" +
-                "&scope=email profile";
-    }
+	public OAuth2Res socialLogin(String code) {
+		// 1. 구글 OAuth2 Access Token 받기
+		String googleAccessToken = getGoogleAccessToken(code);
+		System.out.println("Access Token: " + googleAccessToken);
 
+		// 2. 구글 사용자 정보 받기
+		GoogleUserRes userInfo = getGoogleUserInfo(googleAccessToken);
+		System.out.println("User Info from Google - email: " + userInfo.email() + ", name: " + userInfo.name());
 
-    public OAuth2Res socialLogin(String code) {
-        // 1. 구글 OAuth2 Access Token 받기
-        String googleAccessToken = getGoogleAccessToken(code);
-        System.out.println("Access Token: " + googleAccessToken);
+		// 3. 사용자 정보로 회원가입 또는 로그인 처리
+		AuthMemberDto member = saveOrUpdate(userInfo.email(), userInfo.name());
+		System.out.println("Saved Member Info - email: " + member.email() + ", name: " + member.name());
 
-        // 2. 구글 사용자 정보 받기
-        GoogleUserRes userInfo = getGoogleUserInfo(googleAccessToken);
-        System.out.println("User Info from Google - email: " + userInfo.email() + ", name: " + userInfo.name());
+		// 4. JWT 토큰 생성
+		String accessToken = jwtTokenProvider.createAccessToken(member.id());
+		String refreshToken = jwtTokenProvider.createRefreshToken(member.id());
 
-        // 3. 사용자 정보로 회원가입 또는 로그인 처리
-        AuthMemberDto member = saveOrUpdate(userInfo.email(), userInfo.name());
-        System.out.println("Saved Member Info - email: " + member.email() + ", name: " + member.name());
+		TokenRes token = new TokenRes(accessToken, refreshToken);
 
-        // 4. JWT 토큰 생성
-        String accessToken = jwtTokenProvider.createAccessToken(member.id());
-        String refreshToken = jwtTokenProvider.createRefreshToken(member.id());
+		return new OAuth2Res(token, member.isNew());
+	}
 
-        TokenRes token = new TokenRes(accessToken, refreshToken);
+	private String getGoogleAccessToken(String code) {
+		try {
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-        return new OAuth2Res(token, member.isNew());
-    }
+			MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+			params.add("grant_type", "authorization_code");
+			params.add("client_id", clientId);
+			params.add("client_secret", clientSecret);
+			params.add("redirect_uri", redirectUri);
+			params.add("code", code);
 
-    private String getGoogleAccessToken(String code) {
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+			log.debug("Access Token Request Params: {}", params); // 요청 파라미터 확인
 
-            MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-            params.add("grant_type", "authorization_code");
-            params.add("client_id", clientId);
-            params.add("client_secret", clientSecret);
-            params.add("redirect_uri", redirectUri);
-            params.add("code", code);
+			HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
 
-            log.debug("Access Token Request Params: {}", params); // 요청 파라미터 확인
+			ResponseEntity<GoogleTokenRes> response = restTemplate.postForEntity(
+				tokenUri,
+				request,
+				GoogleTokenRes.class
+			);
 
+			log.debug("Access Token Response: {}", response);
 
-            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
+			if (response.getBody() != null) {
+				return response.getBody().accessToken();
+			}
+			throw new OAuth2AuthenticationProcessingException(
+				"액세스 토큰을 가져오는데 실패했습니다.",
+				OAuth2ErrorCode.ACCESS_TOKEN_ERROR
+			);
+		} catch (RestClientException e) {
+			log.error("Failed to get Access Token: {}", e.getMessage());
+			throw new OAuth2AuthenticationProcessingException(
+				e.getMessage(),
+				OAuth2ErrorCode.ACCESS_TOKEN_ERROR
+			);
+		}
+	}
 
-            ResponseEntity<GoogleTokenRes> response = restTemplate.postForEntity(
-                    tokenUri,
-                    request,
-                    GoogleTokenRes.class
-            );
+	private GoogleUserRes getGoogleUserInfo(String accessToken) {
+		try {
+			HttpHeaders headers = new HttpHeaders();
+			headers.setBearerAuth(accessToken);
+			HttpEntity<?> entity = new HttpEntity<>(headers);
 
-            log.debug("Access Token Response: {}", response);
+			ResponseEntity<GoogleUserRes> response = restTemplate.exchange(
+				resourceUri,
+				HttpMethod.GET,
+				entity,
+				GoogleUserRes.class
+			);
+			if (response.getBody() != null) {
 
-            if (response.getBody() != null) {
-                return response.getBody().accessToken();
-            }
-            throw new OAuth2AuthenticationProcessingException(
-                    "액세스 토큰을 가져오는데 실패했습니다.",
-                    OAuth2ErrorCode.ACCESS_TOKEN_ERROR
-            );
-        } catch (RestClientException e) {
-            log.error("Failed to get Access Token: {}", e.getMessage());
-            throw new OAuth2AuthenticationProcessingException(
-                    e.getMessage(),
-                    OAuth2ErrorCode.ACCESS_TOKEN_ERROR
-            );
-        }
-    }
+				return response.getBody();
+			}
+			throw new OAuth2AuthenticationProcessingException(
+				"사용자 정보를 가져오는데 실패했습니다.",
+				OAuth2ErrorCode.USER_INFO_RESPONSE_ERROR
+			);
+		} catch (RestClientException e) {
+			log.error("Failed to get User Info: {}", e.getMessage());
+			throw new OAuth2AuthenticationProcessingException(
+				e.getMessage(),
+				OAuth2ErrorCode.USER_INFO_RESPONSE_ERROR
+			);
+		}
+	}
 
-    private GoogleUserRes getGoogleUserInfo(String accessToken) {
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(accessToken);
-            HttpEntity<?> entity = new HttpEntity<>(headers);
+	public OAuth2Res loginAndSignUp(LoginAndSignUpReq req) {
+		AuthMemberDto member = saveOrUpdate(req.email(), req.name());
 
-            ResponseEntity<GoogleUserRes> response = restTemplate.exchange(
-                    resourceUri,
-                    HttpMethod.GET,
-                    entity,
-                    GoogleUserRes.class
-            );
-            if (response.getBody() != null) {
+		String accessToken = jwtTokenProvider.createAccessToken(member.id());
+		String refreshToken = jwtTokenProvider.createRefreshToken(member.id());
 
-                return response.getBody();
-            }
-            throw new OAuth2AuthenticationProcessingException(
-                    "사용자 정보를 가져오는데 실패했습니다.",
-                    OAuth2ErrorCode.USER_INFO_RESPONSE_ERROR
-            );
-        } catch (RestClientException e) {
-            log.error("Failed to get User Info: {}", e.getMessage());
-            throw new OAuth2AuthenticationProcessingException(
-                    e.getMessage(),
-                    OAuth2ErrorCode.USER_INFO_RESPONSE_ERROR
-            );
-        }
-    }
+		TokenRes token = new TokenRes(accessToken, refreshToken);
 
-    public OAuth2Res loginAndSignUp(LoginAndSignUpReq req) {
-        AuthMemberDto member = saveOrUpdate(req.email(), req.name());
+		return new OAuth2Res(token, member.isNew());
+	}
 
-        String accessToken = jwtTokenProvider.createAccessToken(member.id());
-        String refreshToken = jwtTokenProvider.createRefreshToken(member.id());
+	public TokenRes refreshToken(String refreshToken) {
 
-        TokenRes token = new TokenRes(accessToken, refreshToken);
+		refreshToken = refreshToken.substring(7);
 
-        return new OAuth2Res(token, member.isNew());
-    }
+		jwtTokenProvider.validateToken(refreshToken);
 
+		String encryptUserId = jwtTokenProvider.getUserIdFromToken(refreshToken);
+		jwtTokenProvider.validateRefreshToken(refreshToken, encryptUserId);
 
-    public TokenRes refreshToken(String refreshToken) {
+		String newAccessToken = jwtTokenProvider.createAccessToken(encryptUserId);
 
-        refreshToken = refreshToken.substring(7);
+		return new TokenRes(newAccessToken, refreshToken);
+	}
 
-        jwtTokenProvider.validateToken(refreshToken);
+	private AuthMemberDto saveOrUpdate(String email, String name) {
+		Boolean isNew = Boolean.FALSE;
+		Member member = memberService.getMemberByEmail(email);
 
-        String encryptUserId = jwtTokenProvider.getUserIdFromToken(refreshToken);
-        jwtTokenProvider.validateRefreshToken(refreshToken, encryptUserId);
+		if (member == null) {
+			member = memberService.addMember(email, name);
+			settingService.setNewUser(member);
+			recycleBinManageService.addRecycleBin(member);
+			isNew = Boolean.TRUE;
+		}
 
-        String newAccessToken = jwtTokenProvider.createAccessToken(encryptUserId);
-
-        return new TokenRes(newAccessToken, refreshToken);
-    }
-
-    private AuthMemberDto saveOrUpdate(String email, String name) {
-        Boolean isNew = Boolean.FALSE;
-        Member member = memberService.getMemberByEmail(email);
-
-        if(member == null){
-            member = memberService.addMember(email, name);
-            settingService.setNewUser(member);
-            recycleBinManageService.addRecycleBin(member);
-            isNew = Boolean.TRUE;
-        }
-
-
-        return new AuthMemberDto(member.getEncryptUserId(), member.getEmail(), member.getName(), isNew);
-    }
+		return new AuthMemberDto(member.getEncryptUserId(), member.getEmail(), member.getName(), isNew);
+	}
 }

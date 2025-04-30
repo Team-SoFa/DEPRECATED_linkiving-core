@@ -1,38 +1,40 @@
 package com.sw19.sofa.domain.ai.service;
 
-import com.sw19.sofa.global.common.dto.TitleAndSummaryDto;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import com.sw19.sofa.global.common.dto.TitleAndSummaryDto;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiManageService {
-    private final AiSummaryService aiSummaryService;
-    private final AiTagService aiTagService;
-    private final WebScrapingService webScrapingService;
-    private final AiFolderService aiFolderService;
-    private final AiTitleService aiTitleService;
+	private final AiSummaryService aiSummaryService;
+	private final AiTagService aiTagService;
+	private final WebScrapingService webScrapingService;
+	private final AiFolderService aiFolderService;
+	private final AiTitleService aiTitleService;
 
-    public TitleAndSummaryDto createTitleAndSummary(String url) {
-        log.info("Extracting title and content from URL: {}", url);
-        String content = webScrapingService.extractContent(url);
-        String title = aiTitleService.generateTitle(content);
-        String summary = aiSummaryService.generateSummary(content);
+	public TitleAndSummaryDto createTitleAndSummary(String url) {
+		log.info("Extracting title and content from URL: {}", url);
+		String content = webScrapingService.extractContent(url);
+		String title = aiTitleService.generateTitle(content);
+		String summary = aiSummaryService.generateSummary(content);
 
-        return new TitleAndSummaryDto(title, summary);
-    }
+		return new TitleAndSummaryDto(title, summary);
+	}
 
-    public List<String> createTagList(String url) {
-        log.info("Generating tags for URL: {}", url);
-        String content = webScrapingService.extractContent(url);
-        return aiTagService.generateTags(content);
-    }
+	public List<String> createTagList(String url) {
+		log.info("Generating tags for URL: {}", url);
+		String content = webScrapingService.extractContent(url);
+		return aiTagService.generateTags(content);
+	}
 
-    public String recommendFolder(String content, List<String> existingFolders) {
-        return aiFolderService.recommendFolderName(content, existingFolders);
-    }
+	public String recommendFolder(String content, List<String> existingFolders) {
+		return aiFolderService.recommendFolderName(content, existingFolders);
+	}
 }
