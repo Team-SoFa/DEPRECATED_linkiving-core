@@ -7,9 +7,10 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.sw19.sofa.domain.folder.dto.FolderDto;
 import com.sw19.sofa.domain.folder.dto.request.FolderReq;
-import com.sw19.sofa.domain.folder.dto.response.FolderListRes;
 import com.sw19.sofa.domain.folder.dto.response.FolderRes;
+import com.sw19.sofa.domain.folder.dto.response.FoldersRes;
 import com.sw19.sofa.domain.folder.entity.Folder;
 import com.sw19.sofa.domain.linkcard.service.LinkCardService;
 import com.sw19.sofa.domain.member.entity.Member;
@@ -25,25 +26,26 @@ public class FolderMangeService {
 	private final LinkCardService linkCardService;
 
 	@Transactional(readOnly = true)
-	public FolderListRes getFolderList(Member member) {
+	public FoldersRes getFolderList(Member member) {
 
-		List<FolderRes> folderRes = folderService.getFolderList(member).folderList();
+		List<FolderDto> folderDtos = folderService.getFolderList(member);
 
-		Optional<FolderRes> minEncryptedIdFolder = folderRes.stream()
+		Optional<FolderDto> minEncryptedIdFolder = folderDtos.stream()
 			.filter(f -> "휴지통".equals(f.name()))
-			.min(Comparator.comparingLong(FolderRes::encryptionId));
+			.min(Comparator.comparingLong(FolderDto::encryptionId));
 
-		List<FolderRes> ret = folderRes.stream()
+		List<FolderDto> ret = folderDtos.stream()
 			.filter(f -> minEncryptedIdFolder.isEmpty() || !minEncryptedIdFolder.get().id().equals(f.id()))
 			.toList();
 
-		return new FolderListRes(ret);
+		return new FoldersRes(ret);
 	}
 
 	@Transactional
-	public FolderListRes addFolder(Member member, FolderReq req) {
+	public FoldersRes addFolder(Member member, FolderReq req) {
 		folderService.addFolder(member, req.name());
-		return folderService.getFolderList(member);
+		List<FolderDto> folders = folderService.getFolderList(member);
+		return new FoldersRes(folders);
 	}
 
 	@Transactional

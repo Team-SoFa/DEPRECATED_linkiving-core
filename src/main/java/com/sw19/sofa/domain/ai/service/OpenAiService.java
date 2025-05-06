@@ -7,8 +7,9 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import com.sw19.sofa.domain.ai.dto.request.ChatGptRequest;
-import com.sw19.sofa.domain.ai.dto.response.ChatGptResponse;
+import com.sw19.sofa.domain.ai.dto.MessageDto;
+import com.sw19.sofa.domain.ai.dto.request.GptReq;
+import com.sw19.sofa.domain.ai.dto.response.GPTRes;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,23 +34,23 @@ public class OpenAiService {
 
 	public String sendPrompt(String prompt, int maxTokens) {
 		log.info("Creating ChatGPT request with max tokens: {}", maxTokens);
-		ChatGptRequest request = new ChatGptRequest(model, prompt, maxTokens);
+		GptReq request = new GptReq(model, prompt, maxTokens);
 
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.set("Authorization", "Bearer " + apiKey);
 
-		HttpEntity<ChatGptRequest> entity = new HttpEntity<>(request, headers);
+		HttpEntity<GptReq> entity = new HttpEntity<>(request, headers);
 
 		try {
 			log.info("Sending request to OpenAI API");
-			ChatGptResponse response = restTemplate.postForObject(apiUrl, entity, ChatGptResponse.class);
+			GPTRes response = restTemplate.postForObject(apiUrl, entity, GPTRes.class);
 			log.info("Received response from OpenAI API");
 
-			if (response != null && response.getChoices() != null && !response.getChoices().isEmpty()) {
-				ChatGptResponse.Message message = response.getChoices().get(0).getMessage();
+			if (response != null && response.choices() != null && !response.choices().isEmpty()) {
+				MessageDto message = response.choices().get(0).message();
 				if (message != null) {
-					return message.getContent();
+					return message.content();
 				}
 			}
 		} catch (Exception e) {

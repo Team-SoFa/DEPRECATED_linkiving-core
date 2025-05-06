@@ -4,7 +4,7 @@ import java.util.List;
 
 import com.sw19.sofa.domain.linkcard.dto.LinkCardTagDto;
 
-public record LinkCardTagListRes(
-	List<LinkCardTagDto> tagList
+public record LinkCardTagsRes(
+	List<LinkCardTagDto> tags
 ) {
 }

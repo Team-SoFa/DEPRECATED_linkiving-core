@@ -7,7 +7,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.sw19.sofa.domain.folder.dto.response.FolderListRes;
+import com.sw19.sofa.domain.folder.dto.FolderDto;
 import com.sw19.sofa.domain.folder.dto.response.FolderRes;
 import com.sw19.sofa.domain.folder.entity.Folder;
 import com.sw19.sofa.domain.folder.repository.FolderRepository;
@@ -24,9 +24,8 @@ public class FolderService {
 	private final FolderRepository folderRepository;
 
 	@Transactional(readOnly = true)
-	public FolderListRes getFolderList(Member member) {
-		List<FolderRes> folderResList = folderRepository.findAllByMember(member).stream().map(FolderRes::new).toList();
-		return new FolderListRes(folderResList);
+	public List<FolderDto> getFolderList(Member member) {
+		return folderRepository.findAllByMember(member).stream().map(FolderDto::new).toList();
 	}
 
 	@Transactional

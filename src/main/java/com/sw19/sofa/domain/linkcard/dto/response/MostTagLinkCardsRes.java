@@ -6,7 +6,7 @@ import com.sw19.sofa.domain.linkcard.dto.LinkCardTagDto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-public record MostTagLinkCardListRes(
+public record MostTagLinkCardsRes(
 
 	@Schema(description = "최다 태그 정보")
 	LinkCardTagDto tag,

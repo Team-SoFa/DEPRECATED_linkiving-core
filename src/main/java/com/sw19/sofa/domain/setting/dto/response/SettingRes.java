@@ -2,18 +2,18 @@ package com.sw19.sofa.domain.setting.dto.response;
 
 import com.sw19.sofa.domain.setting.entity.Setting;
 
-public record SettingResponse(
-	String encryptedId,
+public record SettingRes(
+	String id,
 	boolean isRemindAlarm,
 	boolean isRecommendAlarm,
 	boolean isNoticeAlarm
 ) {
-	public static SettingResponse from(Setting setting) {
-		return new SettingResponse(
+	public static SettingRes from(Setting setting) {
+		return new SettingRes(
 			setting.getEncryptId(),
-			setting.getIsRemind(),
-			setting.getIsRecommend(),
-			setting.getIsNotice()
+			setting.getIs_remind(),
+			setting.getIs_recommend(),
+			setting.getIs_notice()
 		);
 	}
 }

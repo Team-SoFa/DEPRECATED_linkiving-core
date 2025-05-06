@@ -2,7 +2,7 @@ package com.sw19.sofa.domain.linkcard.dto.request;
 
 import java.util.List;
 
-import com.sw19.sofa.domain.linkcard.dto.LinkCardTagSimpleEncryptDto;
+import com.sw19.sofa.domain.linkcard.dto.LinkCardTagSimpleDto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
@@ -18,7 +18,7 @@ public record LinkCardReq(
 	@NotBlank(message = "폴더 ID가 필요합니다")
 	String folderId,
 	@Schema(description = "태그 리스트")
-	List<LinkCardTagSimpleEncryptDto> tagList,
+	List<LinkCardTagSimpleDto> tagList,
 	@Schema(description = "메모")
 	String memo,
 	@Schema(description = "AI 요약")

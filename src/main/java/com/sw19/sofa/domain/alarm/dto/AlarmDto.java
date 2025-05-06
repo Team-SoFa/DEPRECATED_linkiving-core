@@ -1,4 +1,4 @@
-package com.sw19.sofa.domain.alarm.dto.response;
+package com.sw19.sofa.domain.alarm.dto;
 
 import java.time.LocalDateTime;
 
@@ -6,7 +6,7 @@ import com.sw19.sofa.domain.alarm.entity.Alarm;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-public record AlarmRes(
+public record AlarmDto(
 	@Schema(description = "아이디")
 	String id,
 	@Schema(description = "알림 종류(REMIND:리마인드, RECOMMEND: 추천, UPDATE: 업데이트, NOTICE: 공지사항)")
@@ -16,7 +16,7 @@ public record AlarmRes(
 	@Schema(description = "알림 날짜")
 	LocalDateTime time
 ) {
-	public AlarmRes(Alarm alarm) {
+	public AlarmDto(Alarm alarm) {
 		this(alarm.getEncryptId(), alarm.getType().name(), alarm.getContent(), alarm.getCreatedAt());
 	}
 }

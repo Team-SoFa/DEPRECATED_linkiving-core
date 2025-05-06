@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import com.sw19.sofa.domain.alarm.api.AlarmApi;
-import com.sw19.sofa.domain.alarm.dto.response.AlarmListRes;
+import com.sw19.sofa.domain.alarm.dto.response.AlarmsRes;
 import com.sw19.sofa.domain.alarm.service.AlarmService;
 import com.sw19.sofa.domain.member.entity.Member;
 import com.sw19.sofa.global.common.dto.BaseResponse;
@@ -24,8 +24,8 @@ public class AlarmController implements AlarmApi {
 
 	@Override
 	@GetMapping
-	public ResponseEntity<AlarmListRes> getAlarmList(@AuthMember Member member) {
-		AlarmListRes res = alarmService.getAlarmList(member);
+	public ResponseEntity<AlarmsRes> getAlarmList(@AuthMember Member member) {
+		AlarmsRes res = alarmService.getAlarmList(member);
 		return BaseResponse.ok(res);
 	}
 

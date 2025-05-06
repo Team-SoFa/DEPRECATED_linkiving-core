@@ -126,7 +126,7 @@ public class SearchBoxService {
 				List<TagDto> tagDtoList = cardTags.stream()
 					.map(cardTag -> new TagDto(
 						cardTag.id(),
-						getTagName(cardTag.id())
+						getTagName(cardTag.decryptionId())
 					))
 					.toList();
 

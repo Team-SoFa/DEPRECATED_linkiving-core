@@ -2,7 +2,7 @@ package com.sw19.sofa.domain.alarm.api;
 
 import org.springframework.http.ResponseEntity;
 
-import com.sw19.sofa.domain.alarm.dto.response.AlarmListRes;
+import com.sw19.sofa.domain.alarm.dto.response.AlarmsRes;
 import com.sw19.sofa.domain.member.entity.Member;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,7 +15,7 @@ public interface AlarmApi {
 		description = "사용자의 알람 목록을 반환합니다.")
 	@ApiResponse(responseCode = "200",
 		description = "알림 정보(id, 타입(REMIND:리마인드, RECOMMEND: 추천, UPDATE: 업데이트, NOTICE: 공지사항), 내용, 시간, 읽음 여부)")
-	ResponseEntity<AlarmListRes> getAlarmList(Member member);
+	ResponseEntity<AlarmsRes> getAlarmList(Member member);
 
 	@Operation(summary = "알림 읽음 처리",
 		description = "해당 알림을 읽음 처리합니다.")

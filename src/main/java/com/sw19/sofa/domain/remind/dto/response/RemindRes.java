@@ -6,8 +6,8 @@ import com.sw19.sofa.domain.linkcard.entity.LinkCard;
 import com.sw19.sofa.domain.remind.entity.Remind;
 
 public record RemindRes(
-	String encryptedId,
-	String encryptedLinkCardId,
+	String id,
+	String linkCardId,
 	String title,
 	String url,
 	String summary,

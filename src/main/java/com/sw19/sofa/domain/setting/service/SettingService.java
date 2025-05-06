@@ -4,7 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.sw19.sofa.domain.member.entity.Member;
-import com.sw19.sofa.domain.setting.dto.response.SettingResponse;
+import com.sw19.sofa.domain.setting.dto.response.SettingRes;
 import com.sw19.sofa.domain.setting.entity.Setting;
 import com.sw19.sofa.domain.setting.enums.AlarmType;
 import com.sw19.sofa.domain.setting.error.SettingErrorCode;
@@ -23,21 +23,21 @@ public class SettingService {
 	public void setNewUser(Member member) {
 		Setting setting = Setting.builder()
 			.member(member)
-			.isRecommend(true)
-			.isRemind(true)
-			.isNotice(true)
+			.is_recommend(true)
+			.is_remind(true)
+			.is_notice(true)
 			.build();
 
 		settingRepository.save(setting);
 	}
 
-	public SettingResponse getMemberSetting(Member member) {
+	public SettingRes getMemberSetting(Member member) {
 		Setting setting = settingRepository.findByMemberOrThrow(member);
-		return SettingResponse.from(setting);
+		return SettingRes.from(setting);
 	}
 
 	@Transactional
-	public SettingResponse toggleAlarm(Member member, AlarmType alarmType) {
+	public SettingRes toggleAlarm(Member member, AlarmType alarmType) {
 		Setting setting = settingRepository.findByMemberOrThrow(member);
 
 		switch (alarmType) {
@@ -49,6 +49,6 @@ public class SettingService {
 
 		Setting save = settingRepository.save(setting);
 
-		return SettingResponse.from(save);
+		return SettingRes.from(save);
 	}
 }

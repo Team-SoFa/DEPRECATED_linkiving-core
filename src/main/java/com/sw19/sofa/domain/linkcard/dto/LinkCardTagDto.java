@@ -12,7 +12,7 @@ public record LinkCardTagDto(
 	@Schema(description = "태그 속성", example = "AI/CUSTOM") TagType tagType
 ) {
 	public LinkCardTagDto(TagDto tagDto) {
-		this(tagDto.getEncryptId(), tagDto.name(), TagType.AI);
+		this(tagDto.id(), tagDto.name(), TagType.AI);
 	}
 
 	public LinkCardTagDto(CustomTagDto customTagDto) {
