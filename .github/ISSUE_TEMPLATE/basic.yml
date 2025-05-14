@@ -1,0 +1,16 @@
+name: "Basic"
+description: "가장 최소한의 양식"
+projects: [ "Team-SoFa/4" ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 이슈 내용
+
+  - type: textarea
+    id: issue_content
+    attributes:
+      label: ""
+      description: 구체적인 이슈 내용을 작성해주세요.
+    validations:
+      required: false
