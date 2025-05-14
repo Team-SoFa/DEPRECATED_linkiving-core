@@ -24,8 +24,8 @@ import com.sw19.sofa.domain.linkcard.dto.response.LinkCardFolderRes;
 import com.sw19.sofa.domain.linkcard.dto.response.LinkCardInfoRes;
 import com.sw19.sofa.domain.linkcard.dto.response.LinkCardRes;
 import com.sw19.sofa.domain.linkcard.dto.response.LinkCardSimpleRes;
-import com.sw19.sofa.domain.linkcard.dto.response.LinkCardTagListRes;
-import com.sw19.sofa.domain.linkcard.dto.response.MostTagLinkCardListRes;
+import com.sw19.sofa.domain.linkcard.dto.response.LinkCardTagsRes;
+import com.sw19.sofa.domain.linkcard.dto.response.MostTagLinkCardsRes;
 import com.sw19.sofa.domain.linkcard.enums.TagType;
 import com.sw19.sofa.domain.linkcard.service.LinkCardMangeService;
 import com.sw19.sofa.domain.member.entity.Member;
@@ -81,11 +81,11 @@ public class LinkCardController implements LinkCardApi {
 
 	@Override
 	@GetMapping("/most-tag")
-	public ResponseEntity<MostTagLinkCardListRes> getMostTagLinkCardList(
+	public ResponseEntity<MostTagLinkCardsRes> getMostTagLinkCardList(
 		@RequestParam(name = "sortBy") LinkCardSortBy linkCardSortBy, @RequestParam SortOrder sortOrder,
 		@RequestParam String lastId, @RequestParam int limit, @AuthMember Member member) {
-		MostTagLinkCardListRes res = linkCardMangeService.getMostTagLinkCardList(member, linkCardSortBy, sortOrder,
-			lastId, limit);
+		MostTagLinkCardsRes res = linkCardMangeService.getMostTagLinkCardList(member, linkCardSortBy, sortOrder, lastId,
+			limit);
 		return BaseResponse.ok(res);
 	}
 
@@ -111,10 +111,10 @@ public class LinkCardController implements LinkCardApi {
 
 	@Override
 	@PostMapping("/{id}/tag")
-	public ResponseEntity<LinkCardTagListRes> addLinkCardTag(
+	public ResponseEntity<LinkCardTagsRes> addLinkCardTag(
 		@PathVariable String id, @RequestBody LinkCardTagListReq req
 	) {
-		LinkCardTagListRes res = linkCardMangeService.addLinkCardTag(id, req.tagList());
+		LinkCardTagsRes res = linkCardMangeService.addLinkCardTag(id, req.tagList());
 		return BaseResponse.ok(res);
 	}
 

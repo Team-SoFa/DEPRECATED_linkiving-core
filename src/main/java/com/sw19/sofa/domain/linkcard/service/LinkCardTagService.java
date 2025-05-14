@@ -26,7 +26,7 @@ public class LinkCardTagService {
 		List<LinkCardTag> linkCardTagList = tagDtoList.stream()
 			.map(tagDto -> LinkCardTag.builder()
 				.linkCard(linkCard)
-				.tagId(tagDto.id())
+				.tagId(tagDto.decryptionId())
 				.tagType(tagDto.tagType())
 				.build()
 			).toList();

@@ -3,8 +3,8 @@ package com.sw19.sofa.domain.folder.api;
 import org.springframework.http.ResponseEntity;
 
 import com.sw19.sofa.domain.folder.dto.request.FolderReq;
-import com.sw19.sofa.domain.folder.dto.response.FolderListRes;
 import com.sw19.sofa.domain.folder.dto.response.FolderRes;
+import com.sw19.sofa.domain.folder.dto.response.FoldersRes;
 import com.sw19.sofa.domain.member.entity.Member;
 import com.sw19.sofa.global.error.dto.ErrorResponse;
 
@@ -21,13 +21,13 @@ public interface FolderApi {
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "전체 폴더(아이디, 폴더 이름) 리스트 반환")
 	})
-	ResponseEntity<FolderListRes> getFolderList(Member member);
+	ResponseEntity<FoldersRes> getFolderList(Member member);
 
 	@Operation(summary = "폴더 추가", description = "새로운 폴더를 추가합니다.")
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "폴더 추가 후 전체 폴더(아이디, 폴더 이름) 리스트 반환")
 	})
-	ResponseEntity<FolderListRes> addFolder(Member member, FolderReq req);
+	ResponseEntity<FoldersRes> addFolder(Member member, FolderReq req);
 
 	@Operation(summary = "폴더 삭제", description = "폴더 아이디를 통해 폴더를 삭제합니다.")
 	@ApiResponses({

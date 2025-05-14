@@ -8,7 +8,7 @@ import com.sw19.sofa.global.common.dto.TagDto;
 import com.sw19.sofa.global.util.EncryptionUtil;
 
 public record SearchBoxRes(
-	String encryptedId,
+	String id,
 	String title,
 	String url,
 	String summary,

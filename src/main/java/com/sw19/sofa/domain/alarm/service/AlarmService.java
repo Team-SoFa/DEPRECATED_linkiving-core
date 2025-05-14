@@ -6,8 +6,8 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.sw19.sofa.domain.alarm.dto.response.AlarmListRes;
-import com.sw19.sofa.domain.alarm.dto.response.AlarmRes;
+import com.sw19.sofa.domain.alarm.dto.AlarmDto;
+import com.sw19.sofa.domain.alarm.dto.response.AlarmsRes;
 import com.sw19.sofa.domain.alarm.entity.Alarm;
 import com.sw19.sofa.domain.alarm.enums.AlarmType;
 import com.sw19.sofa.domain.alarm.error.AlarmErrorCode;
@@ -48,11 +48,11 @@ public class AlarmService {
 		alarmRepository.deleteAll(deleteList);
 	}
 
-	public AlarmListRes getAlarmList(Member member) {
+	public AlarmsRes getAlarmList(Member member) {
 		List<Alarm> alarmList = alarmRepository.findAllByMember(member);
-		List<AlarmRes> alarmResList = alarmList.stream().map(AlarmRes::new).toList();
+		List<AlarmDto> alarmDtos = alarmList.stream().map(AlarmDto::new).toList();
 
-		return new AlarmListRes(alarmResList);
+		return new AlarmsRes(alarmDtos);
 	}
 
 	@Transactional

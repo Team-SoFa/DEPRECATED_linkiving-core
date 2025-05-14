@@ -12,8 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.sw19.sofa.domain.folder.api.FolderApi;
 import com.sw19.sofa.domain.folder.dto.request.FolderReq;
-import com.sw19.sofa.domain.folder.dto.response.FolderListRes;
 import com.sw19.sofa.domain.folder.dto.response.FolderRes;
+import com.sw19.sofa.domain.folder.dto.response.FoldersRes;
 import com.sw19.sofa.domain.folder.service.FolderMangeService;
 import com.sw19.sofa.domain.member.entity.Member;
 import com.sw19.sofa.global.common.dto.BaseResponse;
@@ -30,15 +30,15 @@ public class FolderController implements FolderApi {
 
 	@Override
 	@GetMapping
-	public ResponseEntity<FolderListRes> getFolderList(@AuthMember Member member) {
-		FolderListRes res = folderMangeService.getFolderList(member);
+	public ResponseEntity<FoldersRes> getFolderList(@AuthMember Member member) {
+		FoldersRes res = folderMangeService.getFolderList(member);
 		return BaseResponse.ok(res);
 	}
 
 	@Override
 	@PostMapping
-	public ResponseEntity<FolderListRes> addFolder(@AuthMember Member member, @RequestBody FolderReq req) {
-		FolderListRes res = folderMangeService.addFolder(member, req);
+	public ResponseEntity<FoldersRes> addFolder(@AuthMember Member member, @RequestBody FolderReq req) {
+		FoldersRes res = folderMangeService.addFolder(member, req);
 		return BaseResponse.ok(res);
 	}
 

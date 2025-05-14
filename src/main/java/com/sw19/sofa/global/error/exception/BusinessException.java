@@ -11,7 +11,7 @@ import lombok.Getter;
 @Getter
 public class BusinessException extends RuntimeException {
 
-	private ErrorCode errorCode;
+	private final ErrorCode errorCode;
 	private List<ErrorResponse.CustomFieldError> errors = new ArrayList<>();
 
 	public BusinessException(String message, ErrorCode errorCode) {

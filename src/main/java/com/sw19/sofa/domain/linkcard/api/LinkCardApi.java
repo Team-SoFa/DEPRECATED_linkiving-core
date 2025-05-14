@@ -14,8 +14,8 @@ import com.sw19.sofa.domain.linkcard.dto.response.LinkCardFolderRes;
 import com.sw19.sofa.domain.linkcard.dto.response.LinkCardInfoRes;
 import com.sw19.sofa.domain.linkcard.dto.response.LinkCardRes;
 import com.sw19.sofa.domain.linkcard.dto.response.LinkCardSimpleRes;
-import com.sw19.sofa.domain.linkcard.dto.response.LinkCardTagListRes;
-import com.sw19.sofa.domain.linkcard.dto.response.MostTagLinkCardListRes;
+import com.sw19.sofa.domain.linkcard.dto.response.LinkCardTagsRes;
+import com.sw19.sofa.domain.linkcard.dto.response.MostTagLinkCardsRes;
 import com.sw19.sofa.domain.linkcard.enums.TagType;
 import com.sw19.sofa.domain.member.entity.Member;
 import com.sw19.sofa.global.common.dto.ListRes;
@@ -51,23 +51,19 @@ public interface LinkCardApi {
 	@Operation(summary = "링크 카드 추가", description = "링크 카드를 추가합니다")
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "링크 카드 추가 완료"),
-		@ApiResponse(responseCode = "404", description = "code: AR-001 | message: 기본 정보를 찾지 못했습니다.. <br>"
-			+
+		@ApiResponse(responseCode = "404", description = "code: AR-001 | message: 기본 정보를 찾지 못했습니다.. <br>" +
 			"code: F-001 | message: 존재하지 않는 폴더입니다.",
 			content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
 	})
 	ResponseEntity<String> addLinkCard(LinkCardReq req);
 
-	@Operation(summary = "전체 링크 카드 리스트 조회", description = "링크 카드 리스트를 조회합니다 <br>"
-		+
+	@Operation(summary = "전체 링크 카드 리스트 조회", description = "링크 카드 리스트를 조회합니다 <br>" +
 		"정렬 순서 및 정렬 방식 변경 시 새로운 조회 필요")
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "링크 카드 간소화(아이디, 제목, 이미지, url) 리스트")
 	})
 	ResponseEntity<ListRes<LinkCardSimpleRes>> getLinkCardList(
-		@Schema(description = "정렬 방식", example =
-			"RECENTLY_SAVED(최근 저장순)/RECENTLY_VIEWED(최근 방문순)/MOST_VIEWED(최다 방문순)/RECENTLY_MODIFIED(최근 수정순)/NAME(이름순)"
-		) LinkCardSortBy linkCardSortBy,
+		@Schema(description = "정렬 방식", example = "RECENTLY_SAVED(최근 저장순)/RECENTLY_VIEWED(최근 방문순)/MOST_VIEWED(최다 방문순)/RECENTLY_MODIFIED(최근 수정순)/NAME(이름순)") LinkCardSortBy linkCardSortBy,
 		@Schema(description = "정렬 순서", example = "ASCENDING(오름차순)/DESCENDING(내림차순)") SortOrder sortOrder,
 		@Schema(description = "마지막 링크카드 아이디", example = "처음 조회시에는 0 입력") String lastId,
 		@Schema(description = "요청 갯수") int limit,
@@ -78,25 +74,22 @@ public interface LinkCardApi {
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "링크 카드 간소화(아이디, 제목, 이미지, url) 리스트")
 	})
-	ResponseEntity<MostTagLinkCardListRes> getMostTagLinkCardList(
-		@Schema(description = "정렬 방식", example =
-			"RECENTLY_SAVED(최근 저장순)/RECENTLY_VIEWED(최근 방문순)/MOST_VIEWED(최다 방문순)/RECENTLY_MODIFIED(최근 수정순)/NAME(이름순)"
-		) LinkCardSortBy linkCardSortBy,
+	ResponseEntity<MostTagLinkCardsRes> getMostTagLinkCardList(
+		@Schema(description = "정렬 방식", example = "RECENTLY_SAVED(최근 저장순)/RECENTLY_VIEWED(최근 방문순)/MOST_VIEWED(최다 방문순)/RECENTLY_MODIFIED(최근 수정순)/NAME(이름순)") LinkCardSortBy linkCardSortBy,
 		@Schema(description = "정렬 순서", example = "ASCENDING(오름차순)/DESCENDING(내림차순)") SortOrder sortOrder,
 		@Schema(description = "마지막 링크카드 아이디", example = "처음 조회시에는 0 입력") String lastId,
 		@Schema(description = "요청 갯수") int limit,
 		Member member
 	);
 
-	@Operation(summary = "폴더 내 링크 카드 리스트 조회", description = "링크 카드 리스트를 조회합니다 <br>" + "정렬 순서 및 정렬 방식 변경 시 새로운 조회 필요")
+	@Operation(summary = "폴더 내 링크 카드 리스트 조회", description = "링크 카드 리스트를 조회합니다 <br>" +
+		"정렬 순서 및 정렬 방식 변경 시 새로운 조회 필요")
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "링크 카드 간소화(아이디, 제목, 이미지, url) 리스트")
 	})
 	ResponseEntity<ListRes<LinkCardSimpleRes>> getLinkCardListByFolder(
 		@Schema(description = "폴더 아이디") String folderId,
-		@Schema(description = "정렬 방식", example =
-			"RECENTLY_SAVED(최근 저장순)/RECENTLY_VIEWED(최근 방문순)/MOST_VIEWED(최다 방문순)/RECENTLY_MODIFIED(최근 수정순)/NAME(이름순)"
-		) LinkCardSortBy linkCardSortBy,
+		@Schema(description = "정렬 방식", example = "RECENTLY_SAVED(최근 저장순)/RECENTLY_VIEWED(최근 방문순)/MOST_VIEWED(최다 방문순)/RECENTLY_MODIFIED(최근 수정순)/NAME(이름순)") LinkCardSortBy linkCardSortBy,
 		@Schema(description = "정렬 순서", example = "ASCENDING(오름차순)/DESCENDING(내림차순)") SortOrder sortOrder,
 		@Schema(description = "마지막 링크카드 아이디", example = "처음 조회시에는 0 입력") String lastId,
 		@Schema(description = "요청 갯수") int limit
@@ -114,7 +107,7 @@ public interface LinkCardApi {
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "추가된 태그 정보 리스트")
 	})
-	ResponseEntity<LinkCardTagListRes> addLinkCardTag(
+	ResponseEntity<LinkCardTagsRes> addLinkCardTag(
 		@Schema(description = "링크 카드 아이디") String id, LinkCardTagListReq req
 	);
 
